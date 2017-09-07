@@ -5,10 +5,11 @@ const express = require('express')
     , passport = require('passport')
     , Auth0Strategy = require('passport-auth0')
     , massive = require('massive')
-    , session = require('express-session');
+    , session = require('express-session')
+    , cors = require('cors');
 
 const app = express()
-
+app.use(cors())
 app.use(session({
     secret: process.env.SECRET,
     resave: false,
@@ -35,7 +36,7 @@ passport.use(new Auth0Strategy({
         profile, 
         done) {
     const db = app.get('db');
-
+console.log(profile);
     db.find_user(profile.id).then( user => {
         if(user[0]) {
             return done(null, user);
@@ -49,12 +50,13 @@ passport.use(new Auth0Strategy({
 
 // THIS IS INVOKED ONE TIME TO SET THINGS UP
 passport.serializeUser(function(user, done) {
+    console.log('serial')
     done(null, user)
 })
 
 // USER COMES FROM SESSION - THIS IS INVOKED FOR EVERY ENDPOINT
 passport.deserializeUser(function(user, done) {
-    console.log(user)
+    console.log('deserial', user)
     app.get('db').find_session_user(user[0].id).then( user => {
         return done(null, user[0]);
     })
@@ -67,7 +69,9 @@ app.get('/auth/callback', passport.authenticate('auth0', {
     failureRedirect: 'http://localhost:3000/#/'
 }))
 
-app.get('auth/me', (req, res) => {
+app.get('/auth/me', (req, res) => {
+    console.log('req.session',req.session)
+    console.log('user', req.user)
     if(!req.user) {
         return res.status(404).send('User not found')
     } else {
@@ -81,7 +85,7 @@ app.get('/auth/logout', (req, res) => {
     // res.redirect comes from express to redirect the user to the given URL. 302 is the default status code for res.redirect.
 })
 
-let PORT = 3005;
+let PORT = 3006;
 app.listen(PORT, () => {
     console.log(`List'n'n on ye olde port: ${PORT}`);
 })
